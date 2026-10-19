@@ -4,7 +4,7 @@ Base preprocessing logic using MONAI.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Tuple, Union, cast
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union, cast
 
 import numpy as np
 import torch
@@ -18,11 +18,16 @@ from monai.transforms import (
 )
 from scipy import ndimage
 
+from .transforms import MaskOutsided
+
 ImageLike = Union[str, Path, MetaTensor]
 
 
 class BasePreprocessor(ABC):
     """Abstract base class for all preprocessors."""
+
+    # HU value for everything outside the target lesion (None = no masking)
+    mask_value: Optional[float] = None
 
     def _prepare_data_point(self, image: ImageLike) -> MetaTensor:
         if isinstance(image, MetaTensor):
@@ -49,13 +54,17 @@ class BasePreprocessor(ABC):
         crop_transforms: List[Any] = [],
         aug_transforms: List[Any] = [],
         intensity_transforms: List[Any] = [],
+        mask_value: Optional[float] = None,
     ):
         """Initializes the preprocessor with given transform lists.
 
         Note:
         - lazy transforms in crop_transform should be at the end
         - lazy transforms in aug_transforms should be at the start
+        - if mask_value is set, all voxels outside the target lesion are set to it
+          (in HU, after cropping/augmentation and before intensity normalization)
         """
+        self.mask_value = mask_value
         self.base_transforms = base_transforms
         self.aug_transforms = aug_transforms
         self.intensity_transforms = intensity_transforms
@@ -151,10 +160,12 @@ class BasePreprocessor(ABC):
         return sorted_component_mask, sorted_metadata_list
 
     def _crop_pipeline(self, augment: bool = False, normalize: bool = True) -> List[Any]:
-        """crop -> (augment) -> normalize"""
+        """crop -> (augment) -> (mask) -> normalize"""
         transforms = self.crop_transforms.copy()
         if augment:
             transforms += self.aug_transforms
+        if self.mask_value is not None:
+            transforms.append(MaskOutsided(keys=["image"], fill_value=self.mask_value))
         if normalize:
             transforms += self.intensity_transforms
         return transforms

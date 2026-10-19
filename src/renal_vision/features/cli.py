@@ -43,6 +43,7 @@ def run_extract(args: argparse.Namespace) -> None:
     # 2. Configure Preprocessor
     # We construct this explicitly to pass CLI arguments
     label_map = load_label_map(args.label_map)
+    mask_value = -1024.0 if args.mask_outside else None
 
     # 3. Instantiate Extractor
     preprocessor: BasePreprocessor
@@ -51,7 +52,7 @@ def run_extract(args: argparse.Namespace) -> None:
         from .embeddings_radiomics import RadiomicsExtractor
         from .preprocessing import CTPreprocessor
 
-        preprocessor = CTPreprocessor(label_map=label_map)
+        preprocessor = CTPreprocessor(label_map=label_map, mask_value=mask_value)
         extractor = RadiomicsExtractor(
             preprocessor=preprocessor,
             min_volume=args.min_volume,
@@ -62,7 +63,7 @@ def run_extract(args: argparse.Namespace) -> None:
         from .embeddings_fmcib import FMCIBExtractor
         from .preprocessing import FMCIBPreprocessor
 
-        preprocessor = FMCIBPreprocessor(label_map=label_map)
+        preprocessor = FMCIBPreprocessor(label_map=label_map, mask_value=mask_value)
         extractor = FMCIBExtractor(
             preprocessor=preprocessor,
             min_volume=args.min_volume,
@@ -72,7 +73,7 @@ def run_extract(args: argparse.Namespace) -> None:
         from .embeddings_mevis import MevisExtractor
         from .preprocessing import MevisPreprocessor
 
-        preprocessor = MevisPreprocessor(label_map=label_map)
+        preprocessor = MevisPreprocessor(label_map=label_map, mask_value=mask_value)
         extractor = MevisExtractor(
             preprocessor=preprocessor,
             min_volume=args.min_volume,
@@ -81,7 +82,7 @@ def run_extract(args: argparse.Namespace) -> None:
         from .embeddings_ctfm import CTFMExtractor
         from .preprocessing import CTFMPreprocessor
 
-        preprocessor = CTFMPreprocessor(label_map=label_map)
+        preprocessor = CTFMPreprocessor(label_map=label_map, mask_value=mask_value)
         extractor = CTFMExtractor(
             preprocessor=preprocessor,
             min_volume=args.min_volume,
@@ -90,7 +91,7 @@ def run_extract(args: argparse.Namespace) -> None:
         from .embeddings_renalclip import RenalCLIPExtractor
         from .preprocessing import RenalCLIPPreprocessor
 
-        preprocessor = RenalCLIPPreprocessor(label_map=label_map)
+        preprocessor = RenalCLIPPreprocessor(label_map=label_map, mask_value=mask_value)
         extractor = RenalCLIPExtractor(
             preprocessor=preprocessor,
             min_volume=args.min_volume,
@@ -99,7 +100,7 @@ def run_extract(args: argparse.Namespace) -> None:
         from .embeddings_spectre import SpectreExtractor
         from .preprocessing import SpectrePreprocessor
 
-        preprocessor = SpectrePreprocessor(label_map=label_map)
+        preprocessor = SpectrePreprocessor(label_map=label_map, mask_value=mask_value)
         extractor = SpectreExtractor(
             preprocessor=preprocessor,
             min_volume=args.min_volume,
@@ -108,7 +109,7 @@ def run_extract(args: argparse.Namespace) -> None:
         from .embeddings_mevis_unicorn import MevisUnicornExtractor
         from .preprocessing import MevisPreprocessor
 
-        preprocessor = MevisPreprocessor(label_map=label_map)
+        preprocessor = MevisPreprocessor(label_map=label_map, mask_value=mask_value)
         extractor = MevisUnicornExtractor(
             preprocessor=preprocessor,
             min_volume=args.min_volume,
@@ -158,6 +159,11 @@ def config_extract(parser: argparse.ArgumentParser) -> None:
         "--label-map",
         type=str,
         help="Path to JSON file containing label mapping (e.g. {'2': 1, '3': 2})",
+    )
+    parser.add_argument(
+        "--mask-outside",
+        action="store_true",
+        help="Set all voxels outside the target lesion to -1024 HU before feature extraction.",
     )
     parser.add_argument(
         "--min-volume", type=int, default=100, help="Minimum lesion size in mm^3 to process."

@@ -233,6 +233,23 @@ class TestAugmentations:
         assert np.array_equal(component1[1], component2[1]), "segmentations should be equal"
         assert component1[2] == component2[2], "metadata should be equal"
 
+    @pytest.mark.parametrize("preprocessor_class", ALL_PREPROCESSORS)
+    def test_mask_outside(self, preprocessor_class, mock_single_lesion):
+        """Voxels outside the target lesion are set to mask_value, lesion voxels are untouched."""
+        image, seg = mock_single_lesion
+        plain = preprocessor_class()
+        masked = preprocessor_class(mask_value=-1024)
+
+        _img, _seg = plain(image, seg)
+        stream_plain = plain.stream_components(_img, _seg, min_volume=1, normalize=False)
+        stream_masked = masked.stream_components(_img, _seg, min_volume=1, normalize=False)
+        for (img_p, seg_p, _), (img_m, seg_m, _) in zip(stream_plain, stream_masked):
+            assert np.array_equal(seg_p, seg_m)
+            assert np.all(img_m[seg_m == 0] == -1024)
+            assert np.array_equal(img_m[seg_m > 0], img_p[seg_p > 0])
+
+        assert masked.get_config()["mask_value"] == -1024
+
     @pytest.mark.parametrize("preprocessor_class", HEAVY_AUG_PREPROCESSORS)
     def test_augmentation(self, preprocessor_class, mock_single_lesion):
         image, seg = mock_single_lesion

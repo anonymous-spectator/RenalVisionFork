@@ -179,6 +179,32 @@ class FixedCropForegroundd(MapTransform):
         return d
 
 
+class MaskOutsided(MapTransform):
+    """
+    Set all image voxels outside the segmentation (``mask_key == 0``) to a constant
+    ``fill_value``. Applied in HU space (before intensity normalization), so a fill of
+    -1024 HU (air) maps to the lowest input value of every model's intensity window.
+    """
+
+    def __init__(
+        self,
+        keys: KeysCollection,
+        mask_key: str = "seg",
+        fill_value: float = -1024.0,
+        allow_missing_keys: bool = False,
+    ) -> None:
+        super().__init__(keys, allow_missing_keys)
+        self.mask_key = mask_key
+        self.fill_value = fill_value
+
+    def __call__(self, data: Mapping[Hashable, NdarrayOrTensor]) -> dict[Hashable, NdarrayOrTensor]:
+        d = dict(data)
+        outside = cast(torch.Tensor, d[self.mask_key]) == 0
+        for key in self.key_iterator(d):
+            d[key] = cast(torch.Tensor, d[key]).masked_fill(outside, self.fill_value)
+        return d
+
+
 class ConditionalAddChannel(Transform):
     """
     Adds a channel dimension to the input if it does not have one (ndim=3).
