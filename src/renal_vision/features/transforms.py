@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from monai.config import IndexSelection, KeysCollection, SequenceStr
 from monai.config.type_definitions import NdarrayOrTensor
+from monai.data import MetaTensor
 from monai.transforms import CropForeground, CropForegroundd, MapTransform, Transform
 from monai.transforms.utils import (
     compute_divisible_spatial_size,
@@ -202,6 +203,32 @@ class MaskOutsided(MapTransform):
         outside = cast(torch.Tensor, d[self.mask_key]) == 0
         for key in self.key_iterator(d):
             d[key] = cast(torch.Tensor, d[key]).masked_fill(outside, self.fill_value)
+        return d
+
+
+class BoundingBoxd(MapTransform):
+    """
+    Replace the foreground of each key with its axis-aligned bounding box, expanded by
+    ``margin`` mm per side (clipped at the image border). Simulates a bounding-box
+    annotation instead of an exact delineation.
+    """
+
+    def __init__(
+        self, keys: KeysCollection, margin: float = 0.0, allow_missing_keys: bool = False
+    ) -> None:
+        super().__init__(keys, allow_missing_keys)
+        self.margin = margin
+
+    def __call__(self, data: Mapping[Hashable, NdarrayOrTensor]) -> dict[Hashable, NdarrayOrTensor]:
+        d = dict(data)
+        for key in self.key_iterator(d):
+            seg = cast(torch.Tensor, d[key])
+            spacing = np.asarray(seg.pixdim) if isinstance(seg, MetaTensor) else 1.0
+            margin = np.round(self.margin / spacing * np.ones(seg.ndim - 1)).astype(int)
+            box_start, box_end = generate_spatial_bounding_box(seg, margin=margin.tolist())
+            box = torch.zeros_like(seg)
+            box[(slice(None),) + tuple(slice(s, e) for s, e in zip(box_start, box_end))] = 1
+            d[key] = box
         return d
 
 

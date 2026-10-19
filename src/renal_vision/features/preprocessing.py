@@ -44,6 +44,7 @@ class CTPreprocessor(BasePreprocessor):
         heavy_augmentations: bool = True,
         rough_crop_margin: int | Sequence[int] = 20,
         mask_value: float | None = None,
+        box_margin: float | None = None,
     ):
         self.target_spacing = target_spacing
         self.window_center = window_center
@@ -153,6 +154,7 @@ class CTPreprocessor(BasePreprocessor):
             aug_transforms=aug_transforms,
             intensity_transforms=intensity_transforms,
             mask_value=mask_value,
+            box_margin=box_margin,
         )
 
     def get_config(self) -> dict[str, Any]:
@@ -163,6 +165,7 @@ class CTPreprocessor(BasePreprocessor):
             "window_width": self.window_width,
             "orientation": self.orientation,
             "mask_value": self.mask_value,
+            "box_margin": self.box_margin,
         }
 
 

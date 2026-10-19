@@ -250,6 +250,20 @@ class TestAugmentations:
 
         assert masked.get_config()["mask_value"] == -1024
 
+    def test_box_margin(self, mock_single_lesion):
+        """The lesion mask is replaced by its bounding box expanded by box_margin mm."""
+        image, seg = mock_single_lesion
+        preprocessor = CTPreprocessor(box_margin=3)
+
+        _img, _seg = preprocessor(image, seg)
+        _, box, _ = next(preprocessor.stream_components(_img, _seg, min_volume=1))
+
+        # 10 mm cube at 1 mm spacing + 3 mm per side -> solid 16^3 box
+        coords = np.argwhere(box)
+        assert box.sum() == 16**3
+        assert np.all(coords.max(axis=0) - coords.min(axis=0) + 1 == 16)
+        assert preprocessor.get_config()["box_margin"] == 3
+
     @pytest.mark.parametrize("preprocessor_class", HEAVY_AUG_PREPROCESSORS)
     def test_augmentation(self, preprocessor_class, mock_single_lesion):
         image, seg = mock_single_lesion

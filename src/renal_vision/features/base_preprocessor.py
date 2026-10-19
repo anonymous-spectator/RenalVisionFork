@@ -18,7 +18,7 @@ from monai.transforms import (
 )
 from scipy import ndimage
 
-from .transforms import MaskOutsided
+from .transforms import BoundingBoxd, MaskOutsided
 
 ImageLike = Union[str, Path, MetaTensor]
 
@@ -28,6 +28,8 @@ class BasePreprocessor(ABC):
 
     # HU value for everything outside the target lesion (None = no masking)
     mask_value: Optional[float] = None
+    # Replace each lesion mask by its bounding box + margin in mm (None = exact mask)
+    box_margin: Optional[float] = None
 
     def _prepare_data_point(self, image: ImageLike) -> MetaTensor:
         if isinstance(image, MetaTensor):
@@ -55,6 +57,7 @@ class BasePreprocessor(ABC):
         aug_transforms: List[Any] = [],
         intensity_transforms: List[Any] = [],
         mask_value: Optional[float] = None,
+        box_margin: Optional[float] = None,
     ):
         """Initializes the preprocessor with given transform lists.
 
@@ -63,8 +66,11 @@ class BasePreprocessor(ABC):
         - lazy transforms in aug_transforms should be at the start
         - if mask_value is set, all voxels outside the target lesion are set to it
           (in HU, after cropping/augmentation and before intensity normalization)
+        - if box_margin is set, each lesion mask is replaced by its bounding box expanded
+          by box_margin mm before cropping (and before masking, if both are set)
         """
         self.mask_value = mask_value
+        self.box_margin = box_margin
         self.base_transforms = base_transforms
         self.aug_transforms = aug_transforms
         self.intensity_transforms = intensity_transforms
@@ -160,8 +166,11 @@ class BasePreprocessor(ABC):
         return sorted_component_mask, sorted_metadata_list
 
     def _crop_pipeline(self, augment: bool = False, normalize: bool = True) -> List[Any]:
-        """crop -> (augment) -> (mask) -> normalize"""
-        transforms = self.crop_transforms.copy()
+        """(box) -> crop -> (augment) -> (mask) -> normalize"""
+        transforms: List[Any] = []
+        if self.box_margin is not None:
+            transforms.append(BoundingBoxd(keys=["seg"], margin=self.box_margin))
+        transforms += self.crop_transforms
         if augment:
             transforms += self.aug_transforms
         if self.mask_value is not None:

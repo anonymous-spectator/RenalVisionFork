@@ -43,7 +43,11 @@ def run_extract(args: argparse.Namespace) -> None:
     # 2. Configure Preprocessor
     # We construct this explicitly to pass CLI arguments
     label_map = load_label_map(args.label_map)
-    mask_value = -1024.0 if args.mask_outside else None
+    prep_kwargs = {
+        "label_map": label_map,
+        "mask_value": -1024.0 if args.mask_outside else None,
+        "box_margin": args.box_margin,
+    }
 
     # 3. Instantiate Extractor
     preprocessor: BasePreprocessor
@@ -52,7 +56,7 @@ def run_extract(args: argparse.Namespace) -> None:
         from .embeddings_radiomics import RadiomicsExtractor
         from .preprocessing import CTPreprocessor
 
-        preprocessor = CTPreprocessor(label_map=label_map, mask_value=mask_value)
+        preprocessor = CTPreprocessor(**prep_kwargs)
         extractor = RadiomicsExtractor(
             preprocessor=preprocessor,
             min_volume=args.min_volume,
@@ -63,7 +67,7 @@ def run_extract(args: argparse.Namespace) -> None:
         from .embeddings_fmcib import FMCIBExtractor
         from .preprocessing import FMCIBPreprocessor
 
-        preprocessor = FMCIBPreprocessor(label_map=label_map, mask_value=mask_value)
+        preprocessor = FMCIBPreprocessor(**prep_kwargs)
         extractor = FMCIBExtractor(
             preprocessor=preprocessor,
             min_volume=args.min_volume,
@@ -73,7 +77,7 @@ def run_extract(args: argparse.Namespace) -> None:
         from .embeddings_mevis import MevisExtractor
         from .preprocessing import MevisPreprocessor
 
-        preprocessor = MevisPreprocessor(label_map=label_map, mask_value=mask_value)
+        preprocessor = MevisPreprocessor(**prep_kwargs)
         extractor = MevisExtractor(
             preprocessor=preprocessor,
             min_volume=args.min_volume,
@@ -82,7 +86,7 @@ def run_extract(args: argparse.Namespace) -> None:
         from .embeddings_ctfm import CTFMExtractor
         from .preprocessing import CTFMPreprocessor
 
-        preprocessor = CTFMPreprocessor(label_map=label_map, mask_value=mask_value)
+        preprocessor = CTFMPreprocessor(**prep_kwargs)
         extractor = CTFMExtractor(
             preprocessor=preprocessor,
             min_volume=args.min_volume,
@@ -91,7 +95,7 @@ def run_extract(args: argparse.Namespace) -> None:
         from .embeddings_renalclip import RenalCLIPExtractor
         from .preprocessing import RenalCLIPPreprocessor
 
-        preprocessor = RenalCLIPPreprocessor(label_map=label_map, mask_value=mask_value)
+        preprocessor = RenalCLIPPreprocessor(**prep_kwargs)
         extractor = RenalCLIPExtractor(
             preprocessor=preprocessor,
             min_volume=args.min_volume,
@@ -100,7 +104,7 @@ def run_extract(args: argparse.Namespace) -> None:
         from .embeddings_spectre import SpectreExtractor
         from .preprocessing import SpectrePreprocessor
 
-        preprocessor = SpectrePreprocessor(label_map=label_map, mask_value=mask_value)
+        preprocessor = SpectrePreprocessor(**prep_kwargs)
         extractor = SpectreExtractor(
             preprocessor=preprocessor,
             min_volume=args.min_volume,
@@ -109,7 +113,7 @@ def run_extract(args: argparse.Namespace) -> None:
         from .embeddings_mevis_unicorn import MevisUnicornExtractor
         from .preprocessing import MevisPreprocessor
 
-        preprocessor = MevisPreprocessor(label_map=label_map, mask_value=mask_value)
+        preprocessor = MevisPreprocessor(**prep_kwargs)
         extractor = MevisUnicornExtractor(
             preprocessor=preprocessor,
             min_volume=args.min_volume,
@@ -164,6 +168,13 @@ def config_extract(parser: argparse.ArgumentParser) -> None:
         "--mask-outside",
         action="store_true",
         help="Set all voxels outside the target lesion to -1024 HU before feature extraction.",
+    )
+    parser.add_argument(
+        "--box-margin",
+        type=float,
+        default=None,
+        help="Replace each lesion mask by its bounding box expanded by this margin in mm "
+        "(0 = tight box). Default: use the exact mask.",
     )
     parser.add_argument(
         "--min-volume", type=int, default=100, help="Minimum lesion size in mm^3 to process."

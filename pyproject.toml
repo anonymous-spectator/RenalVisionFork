@@ -11,7 +11,7 @@ readme = "README.md"
 requires-python = ">=3.9, <3.12"
 dependencies = [
     # Core AI/Medical
-    "monai>=1.3.0",   # 1.3+ has better Py3.11/3.12 support
+    "monai>=1.3.0,<1.6",   # 1.3+ has better Py3.11/3.12 support; 1.6.x breaks RandGaussianSmoothd on our crops
     "torch>=2.0.0",   # 2.0+ is required for Python 3.11+ stability
     "nibabel>=5.1.0", # 5.x series handles new numpy versions better
 
