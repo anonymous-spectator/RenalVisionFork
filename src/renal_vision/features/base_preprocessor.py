@@ -28,6 +28,8 @@ class BasePreprocessor(ABC):
 
     # HU value for everything outside the target lesion (None = no masking)
     mask_value: Optional[float] = None
+    # HU value for everything inside the target lesion (None = keep intensities)
+    mask_inside_value: Optional[float] = None
     # Replace each lesion mask by its bounding box + margin in mm (None = exact mask)
     box_margin: Optional[float] = None
 
@@ -57,6 +59,7 @@ class BasePreprocessor(ABC):
         aug_transforms: List[Any] = [],
         intensity_transforms: List[Any] = [],
         mask_value: Optional[float] = None,
+        mask_inside_value: Optional[float] = None,
         box_margin: Optional[float] = None,
     ):
         """Initializes the preprocessor with given transform lists.
@@ -65,11 +68,13 @@ class BasePreprocessor(ABC):
         - lazy transforms in crop_transform should be at the end
         - lazy transforms in aug_transforms should be at the start
         - if mask_value is set, all voxels outside the target lesion are set to it
-          (in HU, after cropping/augmentation and before intensity normalization)
+          (in HU, after cropping/augmentation and before intensity normalization);
+          if mask_inside_value is also set, all voxels inside the lesion are set to it
         - if box_margin is set, each lesion mask is replaced by its bounding box expanded
           by box_margin mm before cropping (and before masking, if both are set)
         """
         self.mask_value = mask_value
+        self.mask_inside_value = mask_inside_value
         self.box_margin = box_margin
         self.base_transforms = base_transforms
         self.aug_transforms = aug_transforms
@@ -174,7 +179,13 @@ class BasePreprocessor(ABC):
         if augment:
             transforms += self.aug_transforms
         if self.mask_value is not None:
-            transforms.append(MaskOutsided(keys=["image"], fill_value=self.mask_value))
+            transforms.append(
+                MaskOutsided(
+                    keys=["image"],
+                    fill_value=self.mask_value,
+                    inside_value=self.mask_inside_value,
+                )
+            )
         if normalize:
             transforms += self.intensity_transforms
         return transforms

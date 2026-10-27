@@ -45,7 +45,8 @@ def run_extract(args: argparse.Namespace) -> None:
     label_map = load_label_map(args.label_map)
     prep_kwargs = {
         "label_map": label_map,
-        "mask_value": -1024.0 if args.mask_outside else None,
+        "mask_value": -1024.0 if args.mask_outside or args.mask_only else None,
+        "mask_inside_value": 200.0 if args.mask_only else None,
         "box_margin": args.box_margin,
     }
 
@@ -168,6 +169,12 @@ def config_extract(parser: argparse.ArgumentParser) -> None:
         "--mask-outside",
         action="store_true",
         help="Set all voxels outside the target lesion to -1024 HU before feature extraction.",
+    )
+    parser.add_argument(
+        "--mask-only",
+        action="store_true",
+        help="Replace the image by the lesion mask: -1024 HU outside and 200 HU inside the "
+        "target lesion, i.e. no intensity information.",
     )
     parser.add_argument(
         "--box-margin",

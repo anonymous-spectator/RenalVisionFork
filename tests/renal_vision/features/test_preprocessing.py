@@ -250,6 +250,22 @@ class TestAugmentations:
 
         assert masked.get_config()["mask_value"] == -1024
 
+    @pytest.mark.parametrize("preprocessor_class", ALL_PREPROCESSORS)
+    def test_mask_only(self, preprocessor_class, mock_single_lesion):
+        """With mask_inside_value the crop is binary, even after intensity augmentations."""
+        image, seg = mock_single_lesion
+        preprocessor = preprocessor_class(mask_value=-1024, mask_inside_value=200)
+
+        _img, _seg = preprocessor(image, seg)
+        for augment in (False, True):
+            for img, mask, _ in preprocessor.stream_components(
+                _img, _seg, min_volume=1, augment=augment, normalize=False
+            ):
+                assert np.all(img[mask == 0] == -1024)
+                assert np.all(img[mask > 0] == 200)
+
+        assert preprocessor.get_config()["mask_inside_value"] == 200
+
     def test_box_margin(self, mock_single_lesion):
         """The lesion mask is replaced by its bounding box expanded by box_margin mm."""
         image, seg = mock_single_lesion
